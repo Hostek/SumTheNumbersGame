@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Sum the Numbers Game</title>
+        <link
+            rel="stylesheet"
+            href="https://cdnjs.cloudflare.com/ajax/libs/normalize/8.0.1/normalize.min.css"
+            integrity="sha512-NhSC1YmyruXifcj/KFRWoC561YpHpc5Jtzgvbuzx5VozKpWvQ+4nXhPdFgmx8xqexRcpAglTj9sIBWINXa8x5w=="
+            crossorigin="anonymous"
+            referrerpolicy="no-referrer"
+        />
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 0;
+                overflow: hidden;
+                background-color: #222;
+                color: #fff;
+            }
+            #game-container {
+                display: none;
+                position: relative;
+            }
+            .centered-input {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                text-align: center;
+            }
+            input[type="number"] {
+                font-size: 1.5rem;
+                padding: 0.5rem;
+                margin: 1rem 0;
+                border-radius: 5px;
+                border: 1px solid #ccc;
+            }
+            button {
+                font-size: 1.5rem;
+                padding: 0.5rem 1rem;
+                background-color: #28a745;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                cursor: pointer;
+            }
+            button:hover {
+                background-color: #218838;
+            }
+            .round-display {
+                position: absolute;
+                top: 10px;
+                right: 20px;
+                font-size: 1.2rem;
+                color: #fff;
+            }
+            .title-page {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100vh;
+                text-align: center;
+            }
+            .title-page h1 {
+                font-size: 3rem;
+                margin-bottom: 1rem;
+            }
+            .title-page input[type="number"] {
+                font-size: 1.2rem;
+                padding: 0.5rem;
+                margin: 1rem 0;
+                border-radius: 5px;
+                border: 1px solid #ccc;
+            }
+        </style>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/110/three.min.js"></script>
+    </head>
+    <body>
+        <div class="title-page">
+            <h1>Sum the Numbers Game</h1>
+            <button id="start-button">Start!</button>
+            <p>Or start at a specific round:</p>
+            <input
+                type="number"
+                id="start-round"
+                placeholder="Enter round number"
+            />
+        </div>
+
+        <div id="game-container">
+            <div class="round-display">
+                Round: <span id="round-number">1</span>
+            </div>
+        </div>
+
+        <div class="centered-input" style="display: none">
+            <input
+                type="number"
+                id="user-input"
+                placeholder="Enter the sum here"
+            />
+            <button id="submit-button">Submit</button>
+            <button id="next-round-button" style="display: none">
+                Start Next Round
+            </button>
+        </div>
+
+        <script>
+            // Game variables
+            let scene, camera, renderer
+            let textMesh
+            let numbersToShow = []
+            let currentIndex = 0
+            let totalSum = 0
+            let userAnswer = 0
+            let roundCount = 1 // Start from round 1 by default
+            let initialRound = 1
+
+            const startButton = document.getElementById("start-button")
+            const startRoundInput = document.getElementById("start-round")
+            const gameContainer = document.getElementById("game-container")
+            const roundDisplay = document.getElementById("round-number")
+            const userInputContainer = document.querySelector(".centered-input")
+            const userInput = document.getElementById("user-input")
+            const submitButton = document.getElementById("submit-button")
+            const nextRoundButton = document.getElementById("next-round-button")
+
+            // Initialize Three.js Scene
+            function init() {
+                // Initialize renderer properly
+                if (!renderer) {
+                    renderer = new THREE.WebGLRenderer()
+                    renderer.setSize(window.innerWidth, window.innerHeight)
+                    gameContainer.appendChild(renderer.domElement)
+                }
+
+                scene = new THREE.Scene()
+                camera = new THREE.PerspectiveCamera(
+                    75,
+                    window.innerWidth / window.innerHeight,
+                    0.1,
+                    1000
+                )
+                camera.position.z = 5
+
+                startNewRound()
+            }
+
+            // Start a new round
+            function startNewRound() {
+                updateRoundDisplay()
+                numbersToShow = Array.from({ length: roundCount }, () =>
+                    Math.floor(Math.random() * 10 + 1)
+                )
+                currentIndex = 0
+                totalSum = numbersToShow.reduce((acc, num) => acc + num, 0)
+
+                hideUserInput()
+                showNumber()
+            }
+
+            // Update round display
+            function updateRoundDisplay() {
+                roundDisplay.textContent = roundCount
+            }
+
+            // Show the next number in the sequence
+            function showNumber() {
+                if (currentIndex >= numbersToShow.length) {
+                    console.log("hello")
+                    showUserInput()
+                    return
+                }
+
+                const number = numbersToShow[currentIndex]
+                displayNumber(number)
+
+                currentIndex++
+
+                setTimeout(() => {
+                    animateDisappear(() => {
+                        if (currentIndex <= numbersToShow.length) {
+                            showNumber()
+                        }
+                    })
+                }, 2000) // Display each number for 2 seconds
+            }
+
+            // Show user input container
+            function showUserInput() {
+                userInputContainer.style.display = "block"
+            }
+
+            // Hide user input container
+            function hideUserInput() {
+                userInputContainer.style.display = "none"
+                userInput.value = ""
+                nextRoundButton.style.display = "none"
+            }
+
+            // Display a number in the scene
+            function displayNumber(number) {
+                if (textMesh) {
+                    scene.remove(textMesh)
+                }
+
+                const loader = new THREE.FontLoader()
+                loader.load(
+                    "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
+                    function (font) {
+                        const textGeometry = new THREE.TextGeometry(
+                            number.toString(),
+                            {
+                                font: font,
+                                size: 1,
+                                height: 0.2,
+                            }
+                        )
+
+                        const textMaterial = new THREE.MeshBasicMaterial({
+                            color: 0xffffff,
+                        })
+                        textMesh = new THREE.Mesh(textGeometry, textMaterial)
+
+                        textMesh.position.set(-1, 0, 0) // Center the text
+                        textMesh.scale.set(0, 0, 0) // Start small
+
+                        scene.add(textMesh)
+
+                        animateAppear()
+                    }
+                )
+            }
+
+            // Animation to scale in the text
+            function animateAppear() {
+                let scale = 0
+                const duration = 0.3 // seconds
+                const speed = 1 / (duration * 60)
+
+                function step() {
+                    if (scale < 1) {
+                        scale += speed
+                        textMesh.scale.set(scale, scale, scale)
+                        requestAnimationFrame(step)
+                    } else {
+                        textMesh.scale.set(1, 1, 1)
+                    }
+                }
+                step()
+            }
+
+            // Animation to scale out and disappear the text
+            function animateDisappear(callback) {
+                let scale = 1
+                const duration = 0.3 // seconds
+                const speed = 1 / (duration * 60)
+
+                function step() {
+                    if (scale > 0) {
+                        scale -= speed
+                        textMesh.scale.set(scale, scale, scale)
+                        textMesh.material.opacity = scale
+                        textMesh.material.transparent = true
+                        requestAnimationFrame(step)
+                    } else {
+                        scene.remove(textMesh)
+                        callback()
+                    }
+                }
+                step()
+            }
+
+            // Check user's input
+            function checkAnswer() {
+                userAnswer = parseInt(userInput.value, 10)
+                if (userAnswer === totalSum) {
+                    nextRoundButton.style.display = "block"
+                } else {
+                    alert("Wrong answer! Restarting game.")
+                    roundCount = initialRound
+                    startNewRound()
+                }
+            }
+
+            // Start game from the title page
+            startButton.addEventListener("click", () => {
+                const startRoundValue = parseInt(startRoundInput.value, 10)
+                if (!isNaN(startRoundValue) && startRoundValue > 0) {
+                    roundCount = startRoundValue
+                    initialRound = startRoundValue
+                }
+                document.querySelector(".title-page").style.display = "none"
+                gameContainer.style.display = "block"
+                init()
+            })
+
+            // Event listeners
+            submitButton.addEventListener("click", checkAnswer)
+            nextRoundButton.addEventListener("click", () => {
+                hideUserInput()
+                roundCount++
+                startNewRound()
+            })
+
+            // Animation loop
+            function animate() {
+                requestAnimationFrame(animate)
+                renderer.render(scene, camera)
+            }
+
+            animate()
+        </script>
+    </body>
+</html>
